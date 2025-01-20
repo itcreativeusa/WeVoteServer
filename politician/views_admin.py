@@ -5,6 +5,7 @@ import re
 from base64 import b64encode
 import json
 import string
+from time import time
 from datetime import datetime, timedelta
 import pytz
 from django.contrib import messages
@@ -1746,11 +1747,37 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
     vote_usa_politician_id = request.GET.get('vote_usa_politician_id', False)
     youtube_url = request.GET.get('youtube_url', False)
     maplight_id = request.GET.get('maplight_id', False)
+    performance_process_dict = (request.GET.get('performance_process_dict', {}))
+
 
     messages_on_stage = get_messages(request)
     politician_id = convert_to_int(politician_id)
     politician_on_stage_found = False
     politician_on_stage = Politician()
+
+    # The performance_dict variable contains list(s) of performance_snapshots.
+    performance_dict = {}
+    # Take in performance_process_dict from the view that saved data for this candidate. Move the lists of
+    # the performance_snapshots from that view into the local performance_dict.
+    if isinstance(performance_process_dict, str):  # Only parse if it's a string
+        try:
+            performance_process_dict = json.loads(performance_process_dict)
+            try:
+                # Add the lists from performance_process_dict to the lists in performance_dict.
+                performance_dict.update(performance_process_dict)
+            except Exception as e:
+                status += "Error parsing performance_process_dict: {error}".format(error=e)
+        except json.JSONDecodeError:
+            status += "Error decoding performance_process_dict: {error}".format(error=e)
+
+    # Set up performance_list for this view. A pointer to the performance_list variable is established here.
+    #  Throughout the rest of this view, we add snapshots to the performance_list. Since the performance_list
+    #  is "attached" to the performance_dict with a pointer, when we pass performance_dict to the template,
+    #  the performance_list data is included.
+    performance_list = []
+    performance_dict.update({
+        'politician_edit_view': performance_list,
+    })
 
     try:
         if positive_value_exists(politician_id):
@@ -1792,6 +1819,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
 
         # ##################################
         # Show the seo friendly paths for this politician
+        t0 = time()
         path_count = 0
         path_list = []
         if positive_value_exists(politician_we_vote_id):
@@ -1832,9 +1860,17 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 organization_error += " ERROR: Organization not found by organization_we_vote_id. "
             except Exception as e:
                 status += 'ERROR_RETRIEVING_FROM_ORGANIZATION: ' + str(e) + ' '
+        t1 = time()
+        performance_snapshot = {
+            'name': 'PoliticianSEOFriendlyPath',
+            'description': 'Retrieve PoliticianSEOFriendlyPath objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Find organization(s) connected to this politician by politician_we_vote_id
+        t0 = time()
         try:
             from organization.models import Organization
             organization_queryset = Organization.objects.using('readonly').all()
@@ -1864,11 +1900,19 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         if not positive_value_exists(organization_we_vote_id_linked_to_politician) and \
                 positive_value_exists(politician_on_stage.organization_we_vote_id):
             organization_we_vote_id_linked_to_politician = politician_on_stage.organization_we_vote_id
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find organization(s) connected to this politician by politician_we_vote_id',
+            'description': 'Retrieve Organization objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Attach FollowOrganization information
         # Working with We Vote Positions, figure out if organization_is_following_politician and attach that variable
         #  with a value of True to the position, if so.
+        t0 = time()
         try:
             politician_position_query = PositionEntered.objects.using('readonly').all()
             politician_position_list = politician_position_query.filter(
@@ -1903,9 +1947,17 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             if positive_value_exists(politician_position.organization_we_vote_id) and \
                     politician_position.organization_we_vote_id in follow_dict:
                 politician_position.organization_is_following_politician = True
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Attach FollowOrganization information',
+            'description': 'Attach organization_is_following_politician to the position',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Find Candidate "children" of this politician
+        t0 = time()
         try:
             linked_candidate_list = CandidateCampaign.objects.using('readonly').all()
             linked_candidate_list = linked_candidate_list.filter(
@@ -1934,10 +1986,18 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                                 .append(candidate_to_office_link.contest_office_we_vote_id)
                     modified_linked_candidate_list.append(one_candidate)
                 linked_candidate_list = modified_linked_candidate_list
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find Candidate "children" of this politician',
+            'description': 'Retrieve CandidateCampaign objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Find Candidates to Link to this Politician
         # Finding Candidates that *might* be "children" of this politician
+        t0 = time()
         from politician.controllers import find_candidates_to_link_to_this_politician
         related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage)
 
@@ -2041,38 +2101,77 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             except ObjectDoesNotExist:
                 # This is fine, create new
                 pass
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find possible duplicate politicians',
+            'description': 'Retrieve Politician objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Find Representatives Linked to this Politician
+        t0 = time()
         linked_representative_list = []
         if positive_value_exists(politician_we_vote_id):
             queryset = Representative.objects.using('readonly').all()
             queryset = queryset.filter(politician_we_vote_id=politician_we_vote_id)
             linked_representative_list = list(queryset)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find Representatives Linked to this Politician',
+            'description': 'Retrieve Representative objects for this politician',
+            'time_difference': t1 - t0,
+        }
 
         # ##################################
         # Find Representatives to Link to this Politician
         # Finding Representatives that *might* be "children" of this politician
+        t0 = time()
         from politician.controllers import find_representatives_to_link_to_this_politician
         related_representative_list = find_representatives_to_link_to_this_politician(politician=politician_on_stage)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find Representatives to Link to this Politician',
+            'description': 'Retrieve Representative objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Find Campaigns Linked to this Politician
+        t0 = time()
         linked_campaignx_list = []
         if positive_value_exists(politician_we_vote_id):
             from campaign.models import CampaignX
             queryset = CampaignX.objects.using('readonly').all()
             queryset = queryset.filter(linked_politician_we_vote_id=politician_we_vote_id)
             linked_campaignx_list = list(queryset)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find Campaigns Linked to this Politician',
+            'description': 'Retrieve CampaignX objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Find Campaigns to Link to this Politician
         # Finding Representatives that *might* be "children" of this politician
+        t0 = time()
         from politician.controllers import find_campaignx_list_to_link_to_this_politician
         related_campaignx_list = find_campaignx_list_to_link_to_this_politician(politician=politician_on_stage)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find Campaigns to Link to this Politician',
+            'description': 'Retrieve CampaignX objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         # ##################################
         # Find Recommendations related to this Politician
+        t0 = time()
         recommended_politicians = []
         if positive_value_exists(politician_we_vote_id):
             from politician.models import RecommendedPoliticianLinkByPolitician
@@ -2083,6 +2182,13 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         recommended_politicians_list = []
         if recommended_politician_we_vote_ids:
             recommended_politicians_list = Politician.objects.filter(we_vote_id__in=recommended_politician_we_vote_ids)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'Find Recommendations related to this Politician',
+            'description': 'Retrieve RecommendedPoliticianLinkByPolitician objects for this politician',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
         politician_linked_campaignx_we_vote_id = ''
         if len(linked_campaignx_list) > 0:
@@ -2190,6 +2296,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             'organization_we_vote_id':      organization_we_vote_id_linked_to_politician,
             'path_count':                   path_count,
             'path_list':                    path_list,
+            'performance_dict':             performance_dict,
             'politician':                   politician_on_stage,
             'politician_email':             politician_email,
             'politician_email2':            politician_email2,
