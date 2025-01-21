@@ -2593,7 +2593,7 @@ def politician_edit_process_view(request):
     #  the performance_list data is included.
     performance_list = []
     performance_dict.update({
-        'poltician_edit_process_view': performance_list,
+        'politician_edit_process_view': performance_list,
     })
 
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
