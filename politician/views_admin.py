@@ -995,10 +995,18 @@ def politician_list_view(request):
 
         politician_list_count = politician_query.count()
         if not positive_value_exists(show_all):
-            politician_list = politician_query.order_by('politician_name')[:25]
+            start_index = page * items_per_page
+            end_index = start_index + items_per_page
+            politician_list = politician_query.order_by('politician_name')[start_index:end_index]
+            hide_pagination = politician_list_count <= items_per_page
+            has_previous_page = page > 0
+            has_next_page = end_index < politician_list_count
         else:
             # We still want to limit to 200
             politician_list = politician_query.order_by('politician_name')[:200]
+            hide_pagination = True
+            has_previous_page = False
+            has_next_page = False
     except ObjectDoesNotExist:
         # This is fine
         pass
@@ -1171,50 +1179,33 @@ def politician_list_view(request):
             show_related_candidates=show_related_candidates,
             was_candidate_recently=was_candidate_recently,
             )
-        
-    # Pagination logic
-    total_count = politician_query.count()
-    items_per_page = 25
-    page = int(request.GET.get("page", 1)) - 1  # Page is 0-indexed
-    start_index = page * items_per_page
-    end_index = start_index + items_per_page
-
-    # Fetch only the items for the current page
-    politician_list = politician_query.order_by("politician_name")[start_index:end_index]
-
-    # Determine if there are previous/next pages
-    has_previous_page = page > 0
-    has_next_page = end_index < total_count
-
-    # Update URLs for previous and next pages
-    previous_page_url = f"?page={page}&state_code={state_code}&politician_search={politician_search}" if has_previous_page else None
-    next_page_url = f"?page={page + 2}&state_code={state_code}&politician_search={politician_search}" if has_next_page else None
     
-    template_values = {
-        "start_index": start_index,
-        'politician_list': politician_list,
-        'state_code': state_code,
-        'politician_search': politician_search,
-        'current_page_number': page,
-        'previous_page_url': previous_page_url,
-        'next_page_url': next_page_url,
-        'hide_pagination': total_count <= items_per_page,
+    # Update URLs for previous and next pages
+    previous_page_url = f"?page={page - 1}&state_code={state_code}&politician_search={politician_search}" if has_previous_page else None
+    next_page_url = f"?page={page + 1}&state_code={state_code}&politician_search={politician_search}" if has_next_page else None
+    
+    template_values = { 
         'checkbox_url_variables':       checkbox_url_variables,
+        'current_page_number':          page,
         'election_list':                election_list,
         'exclude_politician_analysis_done': exclude_politician_analysis_done,
         'google_civic_election_id':     google_civic_election_id,
+        'hide_pagination':              hide_pagination,
         'hide_politicians_with_photos': hide_politicians_with_photos,
         'messages_on_stage':            messages_on_stage,
+        'next_page_url':                next_page_url,
         'organization_manual_intervention_needed': organization_manual_intervention_needed,
         'organization_might_be_needed_count':   organization_might_be_needed_count,
         'politicians_need_followers_count':     politicians_need_followers_count,
         'politician_list':              politician_list,
         'politician_search':            politician_search,
+        'previous_page_url':            previous_page_url,
         'show_all':                     show_all,
         'show_battleground':            show_battleground,
         'show_politicians_with_email':  show_politicians_with_email,
         'show_related_candidates':      show_related_candidates,
         'show_ocd_id_state_mismatch':   show_ocd_id_state_mismatch,
+        "start_index":                  start_index,
         'state_code':                   state_code,
         'state_list':                   sorted_state_list,
         'was_candidate_recently':       was_candidate_recently,

@@ -51,10 +51,6 @@
 
 <form name="state_code_form" method="get" action="{% url 'politician:politician_list' %}">
     {% csrf_token %}
-    <input type="hidden" name="politician_search" value="{{ politician_search|default_if_none:'' }}" />
-    <input type="hidden" name="show_all" value="{{ show_all|default_if_none:0 }}" />
-    <input type="hidden" name="exclude_politician_analysis_done" value="{{ exclude_politician_analysis_done|default_if_none:0 }}" />
-
     {% if state_code != "" %}
     <a href="#" onclick="showAllStates(); return false;">
         show all states</a>
@@ -367,6 +363,5 @@
     });
 
 </script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 {% endblock %}
