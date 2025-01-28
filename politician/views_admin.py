@@ -1179,12 +1179,10 @@ def politician_list_view(request):
             show_related_candidates=show_related_candidates,
             was_candidate_recently=was_candidate_recently,
             )
-    
     # Update URLs for previous and next pages
-    previous_page_url = f"?page={page - 1}&state_code={state_code}&politician_search={politician_search}" if has_previous_page else None
-    next_page_url = f"?page={page + 1}&state_code={state_code}&politician_search={politician_search}" if has_next_page else None
-    
-    template_values = { 
+    previous_page_url = f"?page={page - 1}&state_code={state_code}&{checkbox_url_variables}"
+    next_page_url = f"?page={page + 1}&state_code={state_code}&{checkbox_url_variables}"
+    template_values = {
         'checkbox_url_variables':       checkbox_url_variables,
         'current_page_number':          page,
         'election_list':                election_list,

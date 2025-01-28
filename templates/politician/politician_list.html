@@ -50,6 +50,7 @@
     </ul>
 
 <form name="state_code_form" method="get" action="{% url 'politician:politician_list' %}">
+    <input type="hidden" name="page" id="page_input" value="{{ current_page_number }}">
     {% csrf_token %}
     {% if state_code != "" %}
     <a href="#" onclick="showAllStates(); return false;">
@@ -304,56 +305,67 @@
     $(function() {
         $('#exclude_politician_analysis_done_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#hide_politicians_with_photos_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#organization_manual_intervention_needed_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#show_all_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#show_battleground_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#show_politicians_with_email_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#show_related_candidates_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#show_ocd_id_state_mismatch_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#state_code_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#politician_search_submit').click(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
         $('#was_candidate_recently_id').change(function() {
             displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();
         });
 
